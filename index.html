@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thi Đua Giáo Viên</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Libs -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+<style>
+:root{
+  --navy:#16264A;
+  --navy-light:#243B6B;
+  --gold:#E8A33D;
+  --gold-dark:#C9821F;
+  --bg:#F3F5F9;
+  --surface:#FFFFFF;
+  --ink:#1B2233;
+  --muted:#616B7D;
+  --line:#E3E7EF;
+  --good:#1E8A5F;
+  --bad:#C0392B;
+  --radius:10px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:'Be Vietnam Pro', system-ui, sans-serif;
+  background:var(--bg);
+  color:var(--ink);
+  font-size:17px;
+  line-height:1.5;
+}
+h1,h2,h3{font-weight:700; margin:0;}
+button{font-family:inherit; cursor:pointer;}
+input,select,textarea{font-family:inherit; font-size:16px;}
+a{color:inherit;}
+
+/* ---------- Layout ---------- */
+#app{display:none; min-height:100vh; grid-template-columns:250px 1fr; grid-template-rows:100vh;}
+#app.show{display:grid;}
+
+#sidebar{
+  background:var(--navy);
+  color:#fff;
+  padding:24px 16px;
+  display:flex; flex-direction:column;
+  overflow-y:auto;
+}
+#sidebar .brand{
+  font-size:22px; font-weight:800; color:#fff;
+  display:flex; align-items:center; gap:10px;
+  margin-bottom:28px; padding:0 8px;
+}
+#sidebar .brand .dot{width:12px;height:12px;border-radius:50%;background:var(--gold);}
+.nav-item{
+  display:flex; align-items:center; gap:12px;
+  padding:13px 14px; border-radius:8px; color:#C9D2E6;
+  font-weight:600; font-size:16px; margin-bottom:4px;
+  border:none; background:transparent; width:100%; text-align:left;
+}
+.nav-item:hover{background:rgba(255,255,255,.08); color:#fff;}
+.nav-item.active{background:var(--gold); color:var(--navy);}
+#sidebar .spacer{flex:1;}
+#sidebar .userbox{
+  border-top:1px solid rgba(255,255,255,.15); padding-top:16px; margin-top:12px;
+}
+#sidebar .userbox .name{font-weight:700; color:#fff; font-size:15px;}
+#sidebar .userbox .role{font-size:13px; color:#9FB0D6; margin-bottom:10px;}
+#sidebar .logout{
+  background:rgba(255,255,255,.1); color:#fff; border:none; padding:9px 12px;
+  border-radius:8px; font-weight:600; width:100%; font-size:14px;
+}
+
+#main{overflow-y:auto; padding:28px 34px;}
+#main h1.page-title{font-size:28px; margin-bottom:4px;}
+#main p.page-sub{color:var(--muted); margin:0 0 22px 0; font-size:15px;}
+
+.card{
+  background:var(--surface); border-radius:var(--radius);
+  border:1px solid var(--line); padding:20px;
+}
+.grid-2{display:grid; grid-template-columns:1fr 1fr; gap:20px;}
+.grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:20px;}
+@media(max-width:980px){.grid-2,.grid-3{grid-template-columns:1fr;}}
+
+.stat{
+  background:var(--surface); border-left:5px solid var(--gold);
+  border-radius:8px; padding:16px 18px; border-top:1px solid var(--line);
+  border-right:1px solid var(--line); border-bottom:1px solid var(--line);
+}
+.stat .label{color:var(--muted); font-size:14px; font-weight:600;}
+.stat .value{font-size:30px; font-weight:800; margin-top:4px;}
+
+table{width:100%; border-collapse:collapse; font-size:15.5px;}
+th,td{padding:11px 12px; text-align:left; border-bottom:1px solid var(--line);}
+th{background:#F7F9FC; font-weight:700; color:var(--navy); position:sticky; top:0;}
+tr:hover td{background:#FAFBFD;}
+.badge{display:inline-block; padding:3px 10px; border-radius:20px; font-weight:700; font-size:13px;}
+.badge-A{background:#E1F5EB; color:var(--good);}
+.badge-B{background:#EAF1FF; color:#2A5CC7;}
+.badge-C{background:#FFF3DC; color:var(--gold-dark);}
+.badge-D{background:#FBE4E1; color:var(--bad);}
+.pos{color:#fff; background:var(--good);}
+.neg{color:#fff; background:var(--bad);}
+
+.btn{
+  border:none; border-radius:8px; padding:10px 18px; font-weight:700; font-size:15px;
+}
+.btn-primary{background:var(--navy); color:#fff;}
+.btn-primary:hover{background:var(--navy-light);}
+.btn-gold{background:var(--gold); color:var(--navy);}
+.btn-gold:hover{background:var(--gold-dark); color:#fff;}
+.btn-outline{background:#fff; border:2px solid var(--navy); color:var(--navy);}
+.btn-danger{background:var(--bad); color:#fff;}
+.btn-sm{padding:6px 12px; font-size:13.5px; border-radius:6px;}
+.btn:disabled{opacity:.5; cursor:not-allowed;}
+
+label{font-weight:600; font-size:14.5px; color:var(--navy); display:block; margin-bottom:6px;}
+input[type=text],input[type=number],input[type=date],input[type=email],input[type=tel],input[type=password],select,textarea{
+  width:100%; padding:10px 12px; border:1.5px solid var(--line); border-radius:8px; margin-bottom:14px; background:#fff;
+}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--gold); border-color:var(--gold);}
+
+.tabs{display:flex; gap:6px; margin-bottom:20px; border-bottom:2px solid var(--line); flex-wrap:wrap;}
+.tab-btn{background:none; border:none; padding:10px 16px; font-weight:700; color:var(--muted); border-bottom:3px solid transparent;}
+.tab-btn.active{color:var(--navy); border-bottom-color:var(--gold);}
+
+.modal-bg{
+  display:none; position:fixed; inset:0; background:rgba(20,25,40,.55); z-index:50;
+  align-items:center; justify-content:center; padding:20px;
+}
+.modal-bg.show{display:flex;}
+.modal{background:#fff; border-radius:12px; padding:26px; width:100%; max-width:520px; max-height:88vh; overflow-y:auto;}
+.modal h3{margin-bottom:16px;}
+.row-flex{display:flex; gap:12px;}
+.row-flex > *{flex:1;}
+.pill-tab{display:inline-flex; gap:4px; background:#EEF1F7; padding:4px; border-radius:9px; margin-bottom:18px;}
+.pill-tab button{border:none; background:none; padding:8px 16px; border-radius:7px; font-weight:700; color:var(--muted);}
+.pill-tab button.active{background:#fff; color:var(--navy); box-shadow:0 1px 3px rgba(0,0,0,.12);}
+
+.toast{
+  position:fixed; bottom:24px; right:24px; background:var(--navy); color:#fff;
+  padding:14px 20px; border-radius:9px; font-weight:600; z-index:100; display:none;
+  box-shadow:0 8px 24px rgba(0,0,0,.25);
+}
+.toast.err{background:var(--bad);}
+.toast.ok{background:var(--good);}
+
+/* ---------- Auth screen ---------- */
+#auth-screen{
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(135deg, var(--navy) 0%, #0D1730 100%); padding:20px;
+}
+.auth-box{background:#fff; border-radius:16px; padding:40px; width:100%; max-width:420px;}
+.auth-box .logo{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+.auth-box .logo .dot{width:14px;height:14px;border-radius:50%;background:var(--gold);}
+.auth-box .logo span{font-size:22px; font-weight:800; color:var(--navy);}
+.auth-box .sub{color:var(--muted); margin-bottom:24px; font-size:14.5px;}
+.auth-toggle{display:flex; gap:6px; background:#EEF1F7; border-radius:10px; padding:4px; margin-bottom:22px;}
+.auth-toggle button{flex:1; border:none; background:none; padding:10px; border-radius:7px; font-weight:700; color:var(--muted);}
+.auth-toggle button.active{background:#fff; color:var(--navy); box-shadow:0 1px 3px rgba(0,0,0,.12);}
+.msg-box{padding:12px 14px; border-radius:8px; font-size:14px; margin-bottom:16px; font-weight:600;}
+.msg-info{background:#EAF1FF; color:#2A5CC7;}
+.msg-err{background:#FBE4E1; color:var(--bad);}
+
+#pending-screen{
+  min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;
+  background:var(--bg);
+}
+.hidden{display:none !important;}
+.help{font-size:13px; color:var(--muted); margin-top:-8px; margin-bottom:14px;}
+</style>
+</head>
+<body>
+
+<!-- ================= AUTH SCREEN ================= -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="logo"><div class="dot"></div><span>THI ĐUA GIÁO VIÊN</span></div>
+    <div class="sub">Hệ thống quản lý điểm thi đua nhà trường</div>
+
+    <div class="auth-toggle">
+      <button id="tab-login" class="active" onclick="switchAuthTab('login')">Đăng nhập</button>
+      <button id="tab-register" onclick="switchAuthTab('register')">Đăng ký</button>
+    </div>
+
+    <div id="auth-msg"></div>
+
+    <form id="login-form" onsubmit="return doLogin(event)">
+      <label>Email</label>
+      <input type="email" id="login-email" required>
+      <label>Mật khẩu</label>
+      <input type="password" id="login-password" required>
+      <button class="btn btn-primary" style="width:100%; padding:13px;" type="submit">Đăng nhập</button>
+    </form>
+
+    <form id="register-form" class="hidden" onsubmit="return doRegister(event)">
+      <label>Họ và tên</label>
+      <input type="text" id="reg-name" required>
+      <label>Email</label>
+      <input type="email" id="reg-email" required>
+      <label>Số điện thoại</label>
+      <input type="tel" id="reg-phone">
+      <label>Mật khẩu</label>
+      <input type="password" id="reg-password" minlength="6" required>
+      <div class="help">Tối thiểu 6 ký tự. Sau khi đăng ký, tài khoản cần Admin duyệt trước khi đăng nhập được.</div>
+      <button class="btn btn-gold" style="width:100%; padding:13px;" type="submit">Đăng ký tài khoản</button>
+    </form>
+  </div>
+</div>
+
+<!-- ================= PENDING SCREEN ================= -->
+<div id="pending-screen" class="hidden">
+  <div class="auth-box" style="text-align:center; max-width:460px;">
+    <div class="logo" style="justify-content:center;"><div class="dot"></div><span>THI ĐUA GIÁO VIÊN</span></div>
+    <h2 style="margin:18px 0 10px;">Tài khoản đang chờ duyệt</h2>
+    <p style="color:var(--muted);">Tài khoản của bạn đã đăng ký thành công nhưng chưa được Quản trị viên phê duyệt hoặc phân quyền. Vui lòng liên hệ Admin nhà trường.</p>
+    <button class="btn btn-outline" style="margin-top:14px;" onclick="signOut()">Đăng xuất</button>
+  </div>
+</div>
+
+<!-- ================= MAIN APP ================= -->
+<div id="app">
+  <div id="sidebar">
+    <div class="brand"><div class="dot"></div>THI ĐUA GV</div>
+    <button class="nav-item active" data-view="dashboard" onclick="goView('dashboard')">🏠 Trang chủ</button>
+    <button class="nav-item" data-view="tracking" onclick="goView('tracking')">📝 Theo dõi thi đua</button>
+    <button class="nav-item" data-view="reports" onclick="goView('reports')">📊 Báo cáo &amp; thống kê</button>
+    <button class="nav-item" data-view="settings" onclick="goView('settings')">⚙️ Cài đặt</button>
+    <div class="spacer"></div>
+    <div class="userbox">
+      <div class="name" id="side-username">-</div>
+      <div class="role" id="side-userrole">-</div>
+      <button class="logout" onclick="signOut()">Đăng xuất</button>
+    </div>
+  </div>
+
+  <div id="main">
+    <div id="view-dashboard"></div>
+    <div id="view-tracking" class="hidden"></div>
+    <div id="view-reports" class="hidden"></div>
+    <div id="view-settings" class="hidden"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="modal-bg" id="modal-bg"><div class="modal" id="modal-body"></div></div>
+
+<script>
+/* ============================================================
+   CẤU HÌNH SUPABASE — ĐIỀN THÔNG TIN CỦA BẠN VÀO ĐÂY
+   ============================================================ */
+const SUPABASE_URL = "https://kqnjajcptowmkbupvwxf.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxbmphamNwdG93bWtidXB2d3hmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkzNDMxNzcsImV4cCI6MjEwNDkxOTE3N30.rB9rOQKFi0myWrBqPUazDsAPG88sDn_RRD2poF2BaFE";
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let CURRENT_PROFILE = null;
+let TEACHERS = [];
+let POSITION_SCORES = [];
+let RATING_LEVELS = [];
+let SCORE_RULES = [];
+let RECORDS = [];
+let CURRENT_VIEW = 'dashboard';
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function toast(msg, type=''){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  t.style.display='block';
+  setTimeout(()=>{ t.style.display='none'; }, 3200);
+}
+function fmtDate(d){
+  if(!d) return '';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('vi-VN');
+}
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function openModal(html){
+  document.getElementById('modal-body').innerHTML = html;
+  document.getElementById('modal-bg').classList.add('show');
+}
+function closeModal(){ document.getElementById('modal-bg').classList.remove('show'); }
+
+function ratingFor(score){
+  const sorted = [...RATING_LEVELS].sort((a,b)=>b.min_score-a.min_score);
+  for(const r of sorted){ if(score >= r.min_score) return r.label; }
+  return sorted.length? sorted[sorted.length-1].label : '-';
+}
+function teacherTotal(teacherId){
+  const t = TEACHERS.find(x=>x.id===teacherId);
+  if(!t) return 0;
+  const sum = RECORDS.filter(r=>r.teacher_id===teacherId).reduce((s,r)=> s + Number(r.points), 0);
+  return Number(t.base_score) + sum;
+}
+function canEdit(){ return CURRENT_PROFILE && ['manager','admin'].includes(CURRENT_PROFILE.role); }
+function isAdmin(){ return CURRENT_PROFILE && CURRENT_PROFILE.role === 'admin'; }
+
+/* ============================================================
+   AUTH
+   ============================================================ */
+function switchAuthTab(tab){
+  document.getElementById('tab-login').classList.toggle('active', tab==='login');
+  document.getElementById('tab-register').classList.toggle('active', tab==='register');
+  document.getElementById('login-form').classList.toggle('hidden', tab!=='login');
+  document.getElementById('register-form').classList.toggle('hidden', tab!=='register');
+  document.getElementById('auth-msg').innerHTML='';
+}
+
+async function doLogin(e){
+  e.preventDefault();
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){
+    document.getElementById('auth-msg').innerHTML = `<div class="msg-box msg-err">${error.message}</div>`;
+    return false;
+  }
+  await afterLogin();
+  return false;
+}
+
+async function doRegister(e){
+  e.preventDefault();
+  const full_name = document.getElementById('reg-name').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const phone = document.getElementById('reg-phone').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const { error } = await sb.auth.signUp({
+    email, password,
+    options:{ data: { full_name, phone } }
+  });
+  if(error){
+    document.getElementById('auth-msg').innerHTML = `<div class="msg-box msg-err">${error.message}</div>`;
+    return false;
+  }
+  document.getElementById('auth-msg').innerHTML = `<div class="msg-box msg-info">Đăng ký thành công! Tài khoản đang chờ Admin duyệt. Bạn có thể đăng nhập ngay, hệ thống sẽ báo trạng thái chờ duyệt.</div>`;
+  switchAuthTab('login');
+  return false;
+}
+
+async function signOut(){
+  await sb.auth.signOut();
+  location.reload();
+}
+
+async function afterLogin(){
+  const { data: { user } } = await sb.auth.getUser();
+  if(!user){ return; }
+  let { data: profile, error } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  if(error || !profile){
+    toast('Không tải được hồ sơ tài khoản', 'err');
+    return;
+  }
+  CURRENT_PROFILE = profile;
+  if(profile.status !== 'approved' || profile.role === 'pending'){
+    document.getElementById('auth-screen').style.display='none';
+    document.getElementById('pending-screen').classList.remove('hidden');
+    return;
+  }
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('pending-screen').classList.add('hidden');
+  document.getElementById('app').classList.add('show');
+  document.getElementById('side-username').textContent = profile.full_name || profile.email;
+  const roleLabel = {admin:'Quản trị viên', manager:'Quản lý', viewer:'Chỉ xem'}[profile.role] || profile.role;
+  document.getElementById('side-userrole').textContent = roleLabel;
+  await loadAllData();
+  goView('dashboard');
+}
+
+async function checkSession(){
+  const { data:{ session } } = await sb.auth.getSession();
+  if(session){ await afterLogin(); }
+}
+
+/* ============================================================
+   LOAD DATA
+   ============================================================ */
+async function loadAllData(){
+  const [t, ps, rl, sr, rec] = await Promise.all([
+    sb.from('teachers').select('*').order('stt', {ascending:true}),
+    sb.from('position_scores').select('*').order('sort_order'),
+    sb.from('rating_levels').select('*').order('sort_order'),
+    sb.from('score_rules').select('*').order('created_at', {ascending:false}),
+    sb.from('score_records').select('*').order('record_date', {ascending:false})
+  ]);
+  TEACHERS = t.data || [];
+  POSITION_SCORES = ps.data || [];
+  RATING_LEVELS = rl.data || [];
+  SCORE_RULES = sr.data || [];
+  RECORDS = rec.data || [];
+}
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+function goView(view){
+  CURRENT_VIEW = view;
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
+  ['dashboard','tracking','reports','settings'].forEach(v=>{
+    document.getElementById('view-'+v).classList.toggle('hidden', v!==view);
+  });
+  if(view==='dashboard') renderDashboard();
+  if(view==='tracking') renderTracking();
+  if(view==='reports') renderReports();
+  if(view==='settings') renderSettings();
+}
+
+/* ============================================================
+   VIEW: DASHBOARD
+   ============================================================ */
+let dashChart = null;
+function renderDashboard(){
+  const ranked = TEACHERS.map(t=>({...t, total: teacherTotal(t.id)})).sort((a,b)=>b.total-a.total);
+  const top5 = ranked.slice(0,5);
+  const bottom5 = [...ranked].sort((a,b)=>a.total-b.total).slice(0,5);
+
+  const el = document.getElementById('view-dashboard');
+  el.innerHTML = `
+    <h1 class="page-title">Trang chủ</h1>
+    <p class="page-sub">Tổng quan điểm thi đua toàn trường</p>
+
+    <div class="grid-3" style="margin-bottom:24px;">
+      <div class="stat"><div class="label">Tổng số giáo viên</div><div class="value">${TEACHERS.length}</div></div>
+      <div class="stat" style="border-left-color:var(--good);"><div class="label">Điểm trung bình</div><div class="value">${ranked.length? (ranked.reduce((s,t)=>s+t.total,0)/ranked.length).toFixed(1):0}</div></div>
+      <div class="stat" style="border-left-color:var(--bad);"><div class="label">Số lượt ghi nhận</div><div class="value">${RECORDS.length}</div></div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:24px;">
+      <div class="card">
+        <h3 style="margin-bottom:14px; color:var(--good);">🏆 TOP 5 điểm cao nhất</h3>
+        <table><thead><tr><th>#</th><th>Họ tên</th><th>Chức vụ</th><th>Điểm</th><th>Xếp loại</th></tr></thead>
+        <tbody>
+          ${top5.map((t,i)=>`<tr><td>${i+1}</td><td>${t.full_name}</td><td>${t.position}</td><td><b>${t.total}</b></td><td><span class="badge badge-${ratingFor(t.total)}">${ratingFor(t.total)}</span></td></tr>`).join('') || '<tr><td colspan=5>Chưa có dữ liệu</td></tr>'}
+        </tbody></table>
+      </div>
+      <div class="card">
+        <h3 style="margin-bottom:14px; color:var(--bad);">⚠️ TOP 5 điểm thấp nhất</h3>
+        <table><thead><tr><th>#</th><th>Họ tên</th><th>Chức vụ</th><th>Điểm</th><th>Xếp loại</th></tr></thead>
+        <tbody>
+          ${bottom5.map((t,i)=>`<tr><td>${i+1}</td><td>${t.full_name}</td><td>${t.position}</td><td><b>${t.total}</b></td><td><span class="badge badge-${ratingFor(t.total)}">${ratingFor(t.total)}</span></td></tr>`).join('') || '<tr><td colspan=5>Chưa có dữ liệu</td></tr>'}
+        </tbody></table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:14px;">🔍 Xem bảng điểm theo giáo viên</h3>
+      <div class="row-flex" style="align-items:flex-end; margin-bottom:16px;">
+        <div>
+          <label>Chọn giáo viên</label>
+          <select id="dash-teacher-select" onchange="renderDashTeacherDetail()">
+            <option value="">-- Tất cả giáo viên (bảng đầy đủ) --</option>
+            ${TEACHERS.map(t=>`<option value="${t.id}">${t.full_name} (${t.subject||''})</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      <div id="dash-detail-area"></div>
+    </div>
+  `;
+  renderDashTeacherDetail();
+}
+
+function renderDashTeacherDetail(){
+  const id = document.getElementById('dash-teacher-select').value;
+  const area = document.getElementById('dash-detail-area');
+  if(!id){
+    const ranked = TEACHERS.map(t=>({...t, total: teacherTotal(t.id)})).sort((a,b)=>b.total-a.total);
+    area.innerHTML = `<table><thead><tr><th>STT</th><th>Họ tên</th><th>Môn dạy</th><th>Chức vụ</th><th>Điểm</th><th>Xếp loại</th></tr></thead>
+      <tbody>${ranked.map((t,i)=>`<tr><td>${i+1}</td><td>${t.full_name}</td><td>${t.subject||''}</td><td>${t.position}</td><td><b>${t.total}</b></td><td><span class="badge badge-${ratingFor(t.total)}">${ratingFor(t.total)}</span></td></tr>`).join('') || '<tr><td colspan=6>Chưa có dữ liệu</td></tr>'}</tbody></table>`;
+    return;
+  }
+  const t = TEACHERS.find(x=>x.id===id);
+  const total = teacherTotal(id);
+  const recs = RECORDS.filter(r=>r.teacher_id===id).sort((a,b)=> new Date(b.record_date)-new Date(a.record_date));
+  area.innerHTML = `
+    <div class="grid-3" style="margin-bottom:16px;">
+      <div class="stat"><div class="label">Điểm hiện tại</div><div class="value">${total}</div></div>
+      <div class="stat" style="border-left-color:var(--good);"><div class="label">Xếp loại</div><div class="value"><span class="badge badge-${ratingFor(total)}">${ratingFor(total)}</span></div></div>
+      <div class="stat" style="border-left-color:var(--gold);"><div class="label">Số lượt ghi nhận</div><div class="value">${recs.length}</div></div>
+    </div>
+    <table><thead><tr><th>Ngày</th><th>Loại</th><th>Nội dung</th><th>Điểm</th></tr></thead>
+    <tbody>${recs.map(r=>`<tr><td>${fmtDate(r.record_date)}</td><td>${r.type==='reward'?'<span style="color:var(--good); font-weight:700;">Khen thưởng</span>':'<span style="color:var(--bad); font-weight:700;">Vi phạm</span>'}</td><td>${r.note||''}</td><td><b style="color:${r.points>=0?'var(--good)':'var(--bad)'}">${r.points>=0?'+':''}${r.points}</b></td></tr>`).join('') || '<tr><td colspan=4>Chưa có ghi nhận nào</td></tr>'}</tbody></table>
+  `;
+}
+
+/* ============================================================
+   VIEW: TRACKING (theo dõi thi đua)
+   ============================================================ */
+function renderTracking(){
+  const el = document.getElementById('view-tracking');
+  el.innerHTML = `
+    <h1 class="page-title">Theo dõi thi đua</h1>
+    <p class="page-sub">Ghi nhận, sửa, xoá đánh giá vi phạm / khen thưởng theo ngày</p>
+
+    <div class="card" style="margin-bottom:20px;">
+      <div class="row-flex" style="align-items:flex-end; flex-wrap:wrap;">
+        <div><label>Lọc theo giáo viên</label>
+          <select id="trk-filter-teacher" onchange="renderTrackingTable()">
+            <option value="">-- Tất cả --</option>
+            ${TEACHERS.map(t=>`<option value="${t.id}">${t.full_name}</option>`).join('')}
+          </select>
+        </div>
+        <div><label>Từ ngày</label><input type="date" id="trk-filter-from" onchange="renderTrackingTable()"></div>
+        <div><label>Đến ngày</label><input type="date" id="trk-filter-to" onchange="renderTrackingTable()"></div>
+        <div style="flex:0 0 auto;">
+          ${canEdit() ? `<button class="btn btn-gold" style="margin-bottom:14px;" onclick="openRecordModal()">+ Ghi nhận mới</button>` : ''}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div id="trk-table-area"></div>
+    </div>
+  `;
+  renderTrackingTable();
+}
+
+function renderTrackingTable(){
+  const tId = document.getElementById('trk-filter-teacher').value;
+  const from = document.getElementById('trk-filter-from').value;
+  const to = document.getElementById('trk-filter-to').value;
+  let list = [...RECORDS];
+  if(tId) list = list.filter(r=>r.teacher_id===tId);
+  if(from) list = list.filter(r=>r.record_date >= from);
+  if(to) list = list.filter(r=>r.record_date <= to);
+  list.sort((a,b)=> new Date(b.record_date)-new Date(a.record_date));
+
+  document.getElementById('trk-table-area').innerHTML = `
+    <table><thead><tr><th>Ngày</th><th>Giáo viên</th><th>Loại</th><th>Nội dung</th><th>Điểm</th>${canEdit()?'<th>Thao tác</th>':''}</tr></thead>
+    <tbody>${list.map(r=>{
+      const t = TEACHERS.find(x=>x.id===r.teacher_id);
+      return `<tr>
+        <td>${fmtDate(r.record_date)}</td>
+        <td>${t? t.full_name : '(đã xoá)'}</td>
+        <td>${r.type==='reward'?'<span style="color:var(--good); font-weight:700;">Khen thưởng</span>':'<span style="color:var(--bad); font-weight:700;">Vi phạm</span>'}</td>
+        <td>${r.note||''}</td>
+        <td><b style="color:${r.points>=0?'var(--good)':'var(--bad)'}">${r.points>=0?'+':''}${r.points}</b></td>
+        ${canEdit()?`<td>
+          <button class="btn btn-outline btn-sm" onclick="openRecordModal('${r.id}')">Sửa</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteRecord('${r.id}')">Xoá</button>
+        </td>`:''}
+      </tr>`;
+    }).join('') || `<tr><td colspan="6">Không có dữ liệu</td></tr>`}</tbody></table>
+  `;
+}
+
+function openRecordModal(id){
+  const rec = id ? RECORDS.find(r=>r.id===id) : null;
+  openModal(`
+    <h3>${rec? 'Sửa ghi nhận' : 'Ghi nhận mới'}</h3>
+    <label>Giáo viên</label>
+    <select id="rm-teacher">${TEACHERS.map(t=>`<option value="${t.id}" ${rec&&rec.teacher_id===t.id?'selected':''}>${t.full_name}</option>`).join('')}</select>
+    <label>Ngày</label>
+    <input type="date" id="rm-date" value="${rec? rec.record_date : todayISO()}">
+    <label>Loại</label>
+    <select id="rm-type" onchange="rmFillRules()">
+      <option value="violation" ${rec&&rec.type==='violation'?'selected':''}>Vi phạm (trừ điểm)</option>
+      <option value="reward" ${rec&&rec.type==='reward'?'selected':''}>Khen thưởng (cộng điểm)</option>
+    </select>
+    <label>Chọn mẫu có sẵn (tuỳ chọn)</label>
+    <select id="rm-rule" onchange="rmApplyRule()"><option value="">-- Nhập thủ công --</option></select>
+    <label>Nội dung</label>
+    <textarea id="rm-note" rows="2">${rec? (rec.note||'') : ''}</textarea>
+    <label>Điểm (âm = trừ, dương = cộng)</label>
+    <input type="number" id="rm-points" step="0.5" value="${rec? rec.points : ''}">
+    <div style="display:flex; gap:10px; margin-top:6px;">
+      <button class="btn btn-primary" onclick="saveRecord(${rec?`'${rec.id}'`:'null'})">Lưu</button>
+      <button class="btn btn-outline" onclick="closeModal()">Huỷ</button>
+    </div>
+  `);
+  document.getElementById('rm-type').value = rec? rec.type : 'violation';
+  rmFillRules(rec ? rec.rule_id : null);
+}
+function rmFillRules(selectedRuleId){
+  const type = document.getElementById('rm-type').value;
+  const sel = document.getElementById('rm-rule');
+  sel.innerHTML = '<option value="">-- Nhập thủ công --</option>' +
+    SCORE_RULES.filter(r=>r.type===type).map(r=>`<option value="${r.id}" ${selectedRuleId===r.id?'selected':''}>${r.name} (${r.points>=0?'+':''}${r.points})</option>`).join('');
+}
+function rmApplyRule(){
+  const id = document.getElementById('rm-rule').value;
+  if(!id) return;
+  const rule = SCORE_RULES.find(r=>r.id===id);
+  if(rule){
+    document.getElementById('rm-note').value = rule.name;
+    document.getElementById('rm-points').value = rule.points;
+  }
+}
+async function saveRecord(id){
+  const teacher_id = document.getElementById('rm-teacher').value;
+  const record_date = document.getElementById('rm-date').value;
+  const type = document.getElementById('rm-type').value;
+  const rule_id = document.getElementById('rm-rule').value || null;
+  const note = document.getElementById('rm-note').value.trim();
+  const points = Number(document.getElementById('rm-points').value);
+  if(!teacher_id || !record_date || isNaN(points)){ toast('Vui lòng nhập đủ thông tin', 'err'); return; }
+  const payload = { teacher_id, record_date, type, rule_id, note, points, created_by: CURRENT_PROFILE.id };
+  let error;
+  if(id){
+    ({error} = await sb.from('score_records').update(payload).eq('id', id));
+  } else {
+    ({error} = await sb.from('score_records').insert(payload));
+  }
+  if(error){ toast(error.message, 'err'); return; }
+  toast('Đã lưu ghi nhận', 'ok');
+  closeModal();
+  await loadAllData();
+  renderTracking();
+}
+async function deleteRecord(id){
+  if(!confirm('Xoá ghi nhận này?')) return;
+  const { error } = await sb.from('score_records').delete().eq('id', id);
+  if(error){ toast(error.message, 'err'); return; }
+  toast('Đã xoá', 'ok');
+  await loadAllData();
+  renderTracking();
+}
+
+/* ============================================================
+   VIEW: REPORTS (báo cáo & thống kê)
+   ============================================================ */
+function renderReports(){
+  const el = document.getElementById('view-reports');
+  el.innerHTML = `
+    <h1 class="page-title">Báo cáo &amp; thống kê</h1>
+    <p class="page-sub">Xuất báo cáo theo khoảng thời gian, sao lưu dữ liệu</p>
+
+    <div class="card" style="margin-bottom:20px;">
+      <h3 style="margin-bottom:14px;">Xuất báo cáo</h3>
+      <div class="row-flex" style="align-items:flex-end; flex-wrap:wrap;">
+        <div><label>Khoảng thời gian</label>
+          <select id="rpt-preset" onchange="rptApplyPreset()">
+            <option value="day">Hôm nay</option>
+            <option value="week">Tuần này</option>
+            <option value="month">Tháng này</option>
+            <option value="custom">Tuỳ chọn</option>
+          </select>
+        </div>
+        <div><label>Từ ngày</label><input type="date" id="rpt-from"></div>
+        <div><label>Đến ngày</label><input type="date" id="rpt-to"></div>
+      </div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:6px;">
+        <button class="btn btn-gold" onclick="exportExcel()">⬇ Xuất Excel</button>
+        <button class="btn btn-primary" onclick="exportPDF()">⬇ Xuất PDF</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:6px;">Sao lưu dữ liệu</h3>
+      <p style="color:var(--muted); font-size:14.5px; margin-top:0;">Tải toàn bộ dữ liệu hệ thống (giáo viên, cấu hình, ghi nhận điểm) về máy dưới dạng file Excel nhiều sheet.</p>
+      <button class="btn btn-outline" onclick="backupAll()">💾 Sao lưu toàn bộ dữ liệu</button>
+    </div>
+  `;
+  rptApplyPreset();
+}
+function rptApplyPreset(){
+  const preset = document.getElementById('rpt-preset').value;
+  const now = new Date();
+  let from, to;
+  if(preset==='day'){ from = to = todayISO(); }
+  else if(preset==='week'){
+    const day = now.getDay()||7;
+    const monday = new Date(now); monday.setDate(now.getDate()-day+1);
+    const sunday = new Date(monday); sunday.setDate(monday.getDate()+6);
+    from = monday.toISOString().slice(0,10); to = sunday.toISOString().slice(0,10);
+  } else if(preset==='month'){
+    from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
+    to = new Date(now.getFullYear(), now.getMonth()+1, 0).toISOString().slice(0,10);
+  } else { return; }
+  document.getElementById('rpt-from').value = from;
+  document.getElementById('rpt-to').value = to;
+}
+function getReportRows(){
+  const from = document.getElementById('rpt-from').value;
+  const to = document.getElementById('rpt-to').value;
+  let list = [...RECORDS];
+  if(from) list = list.filter(r=>r.record_date >= from);
+  if(to) list = list.filter(r=>r.record_date <= to);
+  return list.map(r=>{
+    const t = TEACHERS.find(x=>x.id===r.teacher_id);
+    return {
+      'Ngày': fmtDate(r.record_date),
+      'Họ và tên': t? t.full_name : '',
+      'Chức vụ': t? t.position : '',
+      'Loại': r.type==='reward'?'Khen thưởng':'Vi phạm',
+      'Nội dung': r.note||'',
+      'Điểm': r.points
+    };
+  });
+}
+function exportExcel(){
+  const rows = getReportRows();
+  if(!rows.length){ toast('Không có dữ liệu trong khoảng thời gian này', 'err'); return; }
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "BaoCao");
+  XLSX.writeFile(wb, `BaoCaoThiDua_${todayISO()}.xlsx`);
+}
+function exportPDF(){
+  const rows = getReportRows();
+  if(!rows.length){ toast('Không có dữ liệu trong khoảng thời gian này', 'err'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(14);
+  doc.text('BAO CAO THI DUA GIAO VIEN', 14, 15);
+  doc.autoTable({
+    startY: 22,
+    head: [Object.keys(rows[0])],
+    body: rows.map(r=>Object.values(r)),
+    styles: { fontSize: 9 }
+  });
+  doc.save(`BaoCaoThiDua_${todayISO()}.pdf`);
+}
+function backupAll(){
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(TEACHERS), "GiaoVien");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(POSITION_SCORES), "DiemChucVu");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(RATING_LEVELS), "MocXepLoai");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(SCORE_RULES), "DanhMucCongTru");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(RECORDS), "GhiNhanDiem");
+  XLSX.writeFile(wb, `SaoLuu_ThiDua_${todayISO()}.xlsx`);
+  toast('Đã tạo file sao lưu', 'ok');
+}
+
+/* ============================================================
+   VIEW: SETTINGS
+   ============================================================ */
+let settingsTab = 'teachers';
+function renderSettings(){
+  const el = document.getElementById('view-settings');
+  const tabs = [
+    ['teachers','Danh sách giáo viên'],
+    ['positions','Điểm theo chức vụ'],
+    ['ratings','Mốc xếp loại'],
+    ['rules','Danh mục cộng/trừ điểm'],
+  ];
+  if(isAdmin()) tabs.push(['accounts','Tài khoản']);
+
+  el.innerHTML = `
+    <h1 class="page-title">Cài đặt</h1>
+    <p class="page-sub">Cấu hình danh sách giáo viên, điểm số, xếp loại và tài khoản</p>
+    <div class="pill-tab">${tabs.map(([k,l])=>`<button class="${settingsTab===k?'active':''}" onclick="setSettingsTab('${k}')">${l}</button>`).join('')}</div>
+    <div id="settings-content"></div>
+  `;
+  renderSettingsContent();
+}
+function setSettingsTab(tab){ settingsTab = tab; renderSettings(); }
+
+function renderSettingsContent(){
+  const c = document.getElementById('settings-content');
+  if(settingsTab==='teachers') return renderSettingsTeachers(c);
+  if(settingsTab==='positions') return renderSettingsPositions(c);
+  if(settingsTab==='ratings') return renderSettingsRatings(c);
+  if(settingsTab==='rules') return renderSettingsRules(c);
+  if(settingsTab==='accounts') return renderSettingsAccounts(c);
+}
+
+/* ---- Teachers ---- */
+function renderSettingsTeachers(c){
+  c.innerHTML = `
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:16px;">
+        <div>
+          ${canEdit()?`<button class="btn btn-gold" onclick="openTeacherModal()">+ Thêm giáo viên</button>
+          <label class="btn btn-outline" style="display:inline-block;">Nhập từ Excel<input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importTeachersExcel(event)"></label>
+          <button class="btn btn-outline" onclick="downloadTeacherTemplate()">Tải file mẫu</button>`:''}
+        </div>
+      </div>
+      <table><thead><tr><th>STT</th><th>Họ và tên</th><th>Môn dạy</th><th>Chức vụ</th><th>Điểm nền</th><th>Ghi chú</th>${canEdit()?'<th>Thao tác</th>':''}</tr></thead>
+      <tbody>${TEACHERS.map(t=>`<tr>
+        <td>${t.stt||''}</td><td>${t.full_name}</td><td>${t.subject||''}</td><td>${t.position}</td><td>${t.base_score}</td><td>${t.note||''}</td>
+        ${canEdit()?`<td><button class="btn btn-outline btn-sm" onclick="openTeacherModal('${t.id}')">Sửa</button> <button class="btn btn-danger btn-sm" onclick="deleteTeacher('${t.id}')">Xoá</button></td>`:''}
+      </tr>`).join('') || `<tr><td colspan="7">Chưa có giáo viên nào</td></tr>`}</tbody></table>
+    </div>
+  `;
+}
+function openTeacherModal(id){
+  const t = id? TEACHERS.find(x=>x.id===id) : null;
+  openModal(`
+    <h3>${t?'Sửa giáo viên':'Thêm giáo viên'}</h3>
+    <label>STT</label><input type="number" id="tm-stt" value="${t?t.stt||'':TEACHERS.length+1}">
+    <label>Họ và tên</label><input type="text" id="tm-name" value="${t?t.full_name:''}">
+    <label>Môn dạy</label><input type="text" id="tm-subject" value="${t?t.subject||'':''}">
+    <label>Chức vụ</label>
+    <select id="tm-position" onchange="tmFillBaseScore()">${POSITION_SCORES.map(p=>`<option value="${p.position}" ${t&&t.position===p.position?'selected':''}>${p.position} (${p.base_score}đ)</option>`).join('')}</select>
+    <label>Điểm nền (tự điền theo chức vụ, có thể sửa)</label><input type="number" id="tm-basescore" value="${t?t.base_score:(POSITION_SCORES[0]?.base_score||100)}">
+    <label>Ghi chú</label><textarea id="tm-note" rows="2">${t?t.note||'':''}</textarea>
+    <div style="display:flex; gap:10px; margin-top:6px;">
+      <button class="btn btn-primary" onclick="saveTeacher(${t?`'${t.id}'`:'null'})">Lưu</button>
+      <button class="btn btn-outline" onclick="closeModal()">Huỷ</button>
+    </div>
+  `);
+}
+function tmFillBaseScore(){
+  const pos = document.getElementById('tm-position').value;
+  const p = POSITION_SCORES.find(x=>x.position===pos);
+  if(p) document.getElementById('tm-basescore').value = p.base_score;
+}
+async function saveTeacher(id){
+  const payload = {
+    stt: Number(document.getElementById('tm-stt').value)||null,
+    full_name: document.getElementById('tm-name').value.trim(),
+    subject: document.getElementById('tm-subject').value.trim(),
+    position: document.getElementById('tm-position').value,
+    base_score: Number(document.getElementById('tm-basescore').value),
+    note: document.getElementById('tm-note').value.trim()
+  };
+  if(!payload.full_name){ toast('Vui lòng nhập họ tên', 'err'); return; }
+  let error;
+  if(id) ({error} = await sb.from('teachers').update(payload).eq('id', id));
+  else ({error} = await sb.from('teachers').insert(payload));
+  if(error){ toast(error.message, 'err'); return; }
+  toast('Đã lưu', 'ok'); closeModal(); await loadAllData(); renderSettings();
+}
+async function deleteTeacher(id){
+  if(!confirm('Xoá giáo viên này? Toàn bộ ghi nhận điểm liên quan cũng sẽ bị xoá.')) return;
+  const { error } = await sb.from('teachers').delete().eq('id', id);
+  if(error){ toast(error.message, 'err'); return; }
+  toast('Đã xoá', 'ok'); await loadAllData(); renderSettings();
+}
+function downloadTeacherTemplate(){
+  const ws = XLSX.utils.json_to_sheet([{STT:1,'Họ và tên':'Nguyễn Văn A','Môn dạy':'Toán','Chức vụ':'Giáo viên','Ghi chú':''}]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "MauGiaoVien");
+  XLSX.writeFile(wb, "Mau_DanhSachGiaoVien.xlsx");
+}
+async function importTeachersExcel(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf);
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws);
+  const payload = rows.map(r=>{
+    const position = r['Chức vụ'] || 'Giáo viên';
+    const posCfg = POSITION_SCORES.find(p=>p.position===position);
+    return {
+      stt: r['STT']||null,
+      full_name: r['Họ và tên']||r['Ho va ten']||'',
+      subject: r['Môn dạy']||'',
+      position: posCfg? position : 'Giáo viên',
+      base_score: posCfg? posCfg.base_score : 100,
+      note: r['Ghi chú']||''
+    };
+  }).filter(r=>r.full_name);
+  if(!payload.length){ toast('File không có dữ liệu hợp lệ', 'err'); return; }
+  const { error } = await sb.from('teachers').insert(payload);
+  if(error){ toast(error.message, 'err'); return; }
+  toast(`Đã nhập ${payload.length} giáo viên`, 'ok');
+  evt.target.value='';
+  await loadAllData(); renderSettings();
+}
+
+/* ---- Position scores ---- */
+function renderSettingsPositions(c){
+  c.innerHTML = `
+    <div class="card">
+      ${canEdit()?`<button class="btn btn-gold" style="margin-bottom:16px;" onclick="openPositionModal()">+ Thêm chức vụ</button>`:''}
+      <table><thead><tr><th>Chức vụ</th><th>Điểm mặc định</th>${canEdit()?'<th>Thao tác</th>':''}</tr></thead>
+      <tbody>${POSITION_SCORES.map(p=>`<tr><td>${p.position}</td><td><b>${p.base_score}</b></td>
+        ${canEdit()?`<td><button class="btn btn-outline btn-sm" onclick="openPositionModal('${p.position}')">Sửa</button> <button class="btn btn-danger btn-sm" onclick="deletePosition('${p.position}')">Xoá</button></td>`:''}
+      </tr>`).join('')}</tbody></table>
+    </div>
+  `;
+}
+function openPositionModal(pos){
+  const p = pos? POSITION_SCORES.find(x=>x.position===pos) : null;
+  openModal(`
+    <h3>${p?'Sửa chức vụ':'Thêm chức vụ'}</h3>
+    <label>Tên chức vụ</label><input type="text" id="pm-name" value="${p?p.position:''}" ${p?'readonly':''}>
+    <label>Điểm mặc định</label><input type="number" id="pm-score" value="${p?p.base_score:100}">
+    <div style="display:flex; gap:10px; margin-top:6px;">
+      <button class="btn btn-primary" onclick="savePosition(${p?`'${p.position}'`:'null'})">Lưu</button>
+      <button class="btn btn-outline" onclick="closeModal()">Huỷ</button>
+    </div>
+  `);
+}
+async function savePosition(oldName){
+  const position = document.getElementById('pm-name').value.trim();
+  const base_score = Number(document.getElementById('pm-score').value);
+  if(!position){ toast('Nhập tên chức vụ', 'err'); return; }
+  let error;
+  if(oldName){
+    ({error} = await sb.from('position_scores').update({base_score}).eq('position', oldName));
+  } else {
+    ({error} = await sb.from('position_scores').insert({position, base_score, sort_order: POSITION_SCORES.length+1}));
+  }
+  if(error){ toast(error.message, 'err'); return; }
+  toast('Đã lưu', 'ok'); closeModal(); await loadAllData(); renderSettings();
+}
+async function deletePosition(pos){
+  if(!confirm('Xoá chức vụ này?')) return;
+  const { error } = await sb.from('position_scores').delete().eq('position', pos);
+  if(error){ toast(error.message, 'err'); return; }
+  await loadAllData(); renderSettings();
+}
+
+/* ---- Rating levels ---- */
+function renderSettingsRatings(c){
+  c.innerHTML = `
+    <div class="card">
+      ${canEdit()?`<button class="btn btn-gold" style="margin-bottom:16px;" onclick="openRatingModal()">+ Thêm mốc xếp loại</button>`:''}
+      <table><thead><tr><th>Xếp loại</th><th>Điểm tối thiểu</th>${canEdit()?'<th>Thao tác</th>':''}</tr></thead>
+      <tbody>${[...RATING_LEVELS].sort((a,b)=>b.min_score-a.min_score).map(r=>`<tr><td><span class="badge badge-${r.label}">${r.label}</span></td><td>${r.min_score} trở lên</td>
+        ${canEdit()?`<td><button class="btn btn-outline btn-sm" onclick="openRatingModal('${r.label}')">Sửa</button> <button class="btn btn-danger btn-sm" onclick="deleteRating('${r.label}')">Xoá</button></td>`:''}
+      </tr>`).join('')}</tbody></table>
+    </div>
+  `;
+}
+function openRatingModal(label){
+  const r = label? RATING_LEVELS.find(x=>x.label===label) : null;
+  openModal(`
+    <h3>${r?'Sửa mốc xếp loại':'Thêm mốc xếp loại'}</h3>
+    <label>Ký hiệu xếp loại (VD: A, B, C, D)</label><input type="text" id="rtm-label" value="${r?r.label:''}" ${r?'readonly':''} maxlength="3">
+    <label>Điểm tối thiểu</label><input type="number" id="rtm-min" value="${r?r.min_score:0}">
+    <div style="display:flex; gap:10px; margin-top:6px;">
+      <button class="btn btn-primary" onclick="saveRating(${r?`'${r.label}'`:'null'})">Lưu</button>
+      <button class="btn btn-outline" onclick="closeModal()">Huỷ</button>
+    </div>
+  `);
+}
+async function saveRating(oldLabel){
+  const label = document.getElementById('rtm-label').value.trim();
+  const min_score = Number(document.getElementById('rtm-min').value);
+  if(!label){ toast('Nhập ký hiệu xếp loại', 'err'); return; }
+  let error;
+  if(oldLabel) ({error} = await sb.from('rating_levels').update({min_score}).eq('label', oldLabel));
+  else ({error} = await sb.from('rating_levels').insert({label, min_score, sort_order: RATING_LEVELS.length+1}));
+  if(error){ toast(error.message, 'err'); return; }
+  toast('Đã lưu', 'ok'); closeModal(); await loadAllData(); renderSettings();
+}
+async function deleteRating(label){
+  if(!confirm('Xoá mốc xếp loại này?')) return;
+  const { error } = await sb.from('rating_levels').delete().eq('label', label);
+  if(error){ toast(error.message, 'err'); return; }
+  await loadAllData(); renderSettings();
+}
+
+/* ---- Score rules (danh mục cộng/trừ điểm) ---- */
+function renderSettingsRules(c){
+  c.innerHTML = `
+    <div class="card">
+      <div style="margin-bottom:16px;">
+        ${canEdit()?`<button class="btn btn-gold" onclick="openRuleModal()">+ Thêm mục</button>
+        <label class="btn btn-outline" style="display:inline-block;">Nhập từ Excel<input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="importRulesExcel(event)"></label>
+        <button class="btn btn-outline" onclick="downloadRuleTemplate()">Tải file mẫu</button>`:''}
+      </div>
+      <table><thead><tr><th>Tên</th><th>Loại</th><th>Điểm</th><th>Mô tả</th>${canEdit()?'<th>Thao tác</th>':''}</tr></thead>
+      <tbody>${SCORE_RULES.map(r=>`<tr><td>${r.name}</td><td>${r.type==='reward'?'Khen thưởng':'Vi phạm'}</td><td><b style="color:${r.points>=0?'var(--good)':'var(--bad)'}">${r.points>=0?'+':''}${r.points}</b></td><td>${r.description||''}</td>
+        ${canEdit()?`<td><button class="btn btn-outline btn-sm" onclick="openRuleModal('${r.id}')">Sửa</button> <button class="btn btn-danger btn-sm" onclick="deleteRule('${r.id}')">Xoá</button></td>`:''}
+      </tr>`).join('') || `<tr><td colspan="5">Chưa có danh mục nào</td></tr>`}</tbody></table>
+    </div>
+  `;
+}
+function openRuleModal(id){
+  const r = id? SCORE_RULES.find(x=>x.id===id) : null;
+  openModal(`
+    <h3>${r?'Sửa mục':'Thêm mục cộng/trừ điểm'}</h3>
+    <label>Tên</label><input type="text" id="rlm-name" value="${r?r.name:''}">
+    <label>Loại</label><select id="rlm-type"><option value="violation" ${r&&r.type==='violation'?'selected':''}>Vi phạm</option><option value="reward" ${r&&r.type==='reward'?'selected':''}>Khen thưởng</option></select>
+    <label>Điểm (âm = trừ, dương = cộng)</label><input type="number" id="rlm-points" step="0.5" value="${r?r.points:''}">
+    <label>Mô tả</label><textarea id="rlm-desc" rows="2">${r?r.description||'':''}</textarea>
+    <div style="display:flex; gap:10px; margin-top:6px;">
+      <button class="btn btn-primary" onclick="saveRule(${r?`'${r.id}'`:'null'})">Lưu</button>
+      <button class="btn btn-outline" onclick="closeModal()">Huỷ</button>
+    </div>
+  `);
+}
+async function saveRule(id){
+  const payload = {
+    name: document.getElementById('rlm-name').value.trim(),
+    type: document.getElementById('rlm-type').value,
+    points: Number(document.getElementById('rlm-points').value),
+    description: document.getElementById('rlm-desc').value.trim()
+  };
+  if(!payload.name || isNaN(payload.points)){ toast('Nhập đủ thông tin', 'err'); return; }
+  let error;
+  if(id) ({error} = await sb.from('score_rules').update(payload).eq('id', id));
+  else ({error} = await sb.from('score_rules').insert(payload));
+  if(error){ toast(error.message, 'err'); return; }
+  toast('Đã lưu', 'ok'); closeModal(); await loadAllData(); renderSettings();
+}
+async function deleteRule(id){
+  if(!confirm('Xoá mục này?')) return;
+  const { error } = await sb.from('score_rules').delete().eq('id', id);
+  if(error){ toast(error.message, 'err'); return; }
+  await loadAllData(); renderSettings();
+}
+function downloadRuleTemplate(){
+  const ws = XLSX.utils.json_to_sheet([
+    {'Tên':'Đi trễ giờ dạy','Loại':'violation','Điểm':-2,'Mô tả':'Trễ quá 5 phút'},
+    {'Tên':'Sáng kiến kinh nghiệm cấp trường','Loại':'reward','Điểm':5,'Mô tả':''}
+  ]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "MauDanhMuc");
+  XLSX.writeFile(wb, "Mau_DanhMucCongTruDiem.xlsx");
+}
+async function importRulesExcel(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf);
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws);
+  const payload = rows.map(r=>({
+    name: r['Tên']||'',
+    type: (r['Loại']==='reward')? 'reward':'violation',
+    points: Number(r['Điểm'])||0,
+    description: r['Mô tả']||''
+  })).filter(r=>r.name);
+  if(!payload.length){ toast('File không có dữ liệu hợp lệ', 'err'); return; }
+  const { error } = await sb.from('score_rules').insert(payload);
+  if(error){ toast(error.message, 'err'); return; }
+  toast(`Đã nhập ${payload.length} mục`, 'ok');
+  evt.target.value='';
+  await loadAllData(); renderSettings();
+}
+
+/* ---- Accounts (admin only) ---- */
+async function renderSettingsAccounts(c){
+  c.innerHTML = `<div class="card">Đang tải...</div>`;
+  const { data, error } = await sb.from('profiles').select('*').order('created_at', {ascending:false});
+  if(error){ c.innerHTML = `<div class="card">Lỗi tải danh sách tài khoản: ${error.message}</div>`; return; }
+  c.innerHTML = `
+    <div class="card">
+      <table><thead><tr><th>Họ tên</th><th>Email</th><th>SĐT</th><th>Trạng thái</th><th>Vai trò</th><th>Thao tác</th></tr></thead>
+      <tbody>${data.map(p=>`<tr>
+        <td>${p.full_name||''}</td><td>${p.email||''}</td><td>${p.phone||''}</td>
+        <td>${p.status==='approved'?'<span class="badge badge-A">Đã duyệt</span>':p.status==='rejected'?'<span class="badge badge-D">Từ chối</span>':'<span class="badge badge-C">Chờ duyệt</span>'}</td>
+        <td>
+          <select onchange="updateAccountRole('${p.id}', this.value)">
+            <option value="pending" ${p.role==='pending'?'selected':''}>Chưa phân quyền</option>
+            <option value="viewer" ${p.role==='viewer'?'selected':''}>Chỉ xem</option>
+            <option value="manager" ${p.role==='manager'?'selected':''}>Quản lý</option>
+            <option value="admin" ${p.role==='admin'?'selected':''}>Quản trị viên</option>
+          </select>
+        </td>
+        <td>
+          ${p.status!=='approved'?`<button class="btn btn-primary btn-sm" onclick="updateAccountStatus('${p.id}','approved')">Duyệt</button>`:''}
+          ${p.status!=='rejected'?`<button class="btn btn-danger btn-sm" onclick="updateAccountStatus('${p.id}','rejected')">Từ chối</button>`:''}
+        </td>
+      </tr>`).join('')}</tbody></table>
+    </div>
+  `;
+}
+async function updateAccountRole(id, role){
+  const { error } = await sb.from('profiles').update({role}).eq('id', id);
+  if(error){ toast(error.message, 'err'); return; }
+  toast('Đã cập nhật vai trò', 'ok');
+}
+async function updateAccountStatus(id, status){
+  const { error } = await sb.from('profiles').update({status}).eq('id', id);
+  if(error){ toast(error.message, 'err'); return; }
+  toast('Đã cập nhật trạng thái', 'ok');
+  renderSettingsAccounts(document.getElementById('settings-content'));
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+checkSession();
+</script>
+</body>
+</html>
