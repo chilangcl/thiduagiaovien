@@ -58,7 +58,7 @@ a{color:var(--blue);}
 .brand{display:flex; align-items:center; gap:8px; font-weight:800; font-size:17px; white-space:nowrap;
   overflow:hidden; text-overflow:ellipsis; flex-shrink:1; min-width:0;}
 .brand .dot{width:10px; height:10px; border-radius:50%; background:var(--amber); flex-shrink:0;}
-#navtabs{display:flex; gap:4px; overflow-x:auto; flex:1 1 auto; min-width:0; scrollbar-width:none;}
+#navtabs{display:flex; gap:4px; overflow-x:auto; flex:1 1 auto; min-width:0; scrollbar-width:none; touch-action:pan-x;}
 #navtabs::-webkit-scrollbar{display:none;}
 .navtab{
   background:transparent; border:none; color:#C7D3E6; padding:10px 14px;
@@ -165,7 +165,7 @@ main{max-width:1280px; margin:0 auto; padding:22px 16px calc(80px + env(safe-are
 }
 
 /* ============================== TABLE ============================== */
-.table-wrap{background:var(--card); border:1px solid var(--border); border-radius:var(--radius); overflow-x:auto; box-shadow:var(--shadow);}
+.table-wrap{background:var(--card); border:1px solid var(--border); border-radius:var(--radius); overflow-x:auto; box-shadow:var(--shadow); touch-action:pan-x;}
 table{width:100%; border-collapse:collapse; font-size:14.5px;}
 thead th{
   background:var(--navy-2); color:#fff; text-align:left; padding:12px 14px;
@@ -220,7 +220,7 @@ tbody tr:hover{background:#F7FAFD;}
 }
 .subtabs{-webkit-overflow-scrolling:touch;}
 @media(max-width:600px){
-  .subtabs{ flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }
+  .subtabs{ flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; touch-action:pan-x; }
   .subtabs::-webkit-scrollbar{ display:none; }
   .subtab{ flex-shrink:0; }
 }
