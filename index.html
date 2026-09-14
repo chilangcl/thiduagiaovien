@@ -435,7 +435,8 @@ footer{text-align:center; color:var(--text-faint); font-size:13px; padding:24px 
       <input type="file" id="fileRestore" accept=".json" class="hidden">
     </div>
 
-    <h3 style="margin:10px 0 10px; font-size:16px; color:var(--navy);">Tổng hợp theo giáo viên (trong kỳ đã chọn)</h3>
+    <h3 style="margin:10px 0 4px; font-size:16px; color:var(--navy);">Tổng hợp theo giáo viên (toàn bộ danh sách)</h3>
+    <p class="small-note" id="repSummaryNote" style="margin-top:0;"></p>
     <div class="table-wrap" style="margin-bottom:22px;">
       <table class="responsive" id="repSummaryTable">
         <thead><tr><th>Họ và tên</th><th>Tổ</th><th>Môn</th><th>Số lượt</th><th>Điểm cộng/trừ trong kỳ</th><th>Điểm hiện tại (lũy kế)</th><th>Xếp loại hiện tại</th></tr></thead>
@@ -995,72 +996,116 @@ function setQuickRange(kind){
   if (kind==="today"){ from=to=new Date(now); }
   else if (kind==="week"){ const day=(now.getDay()+6)%7; from=new Date(now); from.setDate(now.getDate()-day); to=new Date(from); to.setDate(from.getDate()+6); }
   else { from=new Date(now.getFullYear(), now.getMonth(), 1); to=new Date(now.getFullYear(), now.getMonth()+1, 0); }
+  // "Đến ngày" không vượt quá hôm nay — vì đây chính là ngày xuất/in báo cáo,
+  // điểm lũy kế luôn được tính đến đúng ngày này, kể cả khi xuất giữa tháng.
+  if (to > now) to = new Date(now);
   $("#repFrom").value = from.toISOString().slice(0,10); $("#repTo").value = to.toISOString().slice(0,10);
 }
 $$("[data-quick]").forEach(b=>b.addEventListener("click", ()=>{ setQuickRange(b.dataset.quick); loadReports(); }));
 $("#btnRepXem").addEventListener("click", loadReports);
 
-let reportDetailRows = [], reportSummaryRows = [];
+let reportDetailRows = [], reportSummaryRows = [], reportAsOfDate = "";
 async function loadReports(){
   if(!CONFIG_OK) return;
   const from=$("#repFrom").value, to=$("#repTo").value;
-  let q = supa.from("danh_gia").select("*, giao_vien(ho_ten, to_id, mon_id)").order("ngay");
-  if (from) q=q.gte("ngay", from); if (to) q=q.lte("ngay", to);
-  const { data, error } = await q;
-  if (error){ console.error(error); return; }
   const toF=$("#repTo_").value, monF=$("#repMon").value;
-  let rows = (data||[]).filter(r=>{
+  const toName=id=>ST.toBo.find(t=>t.id===id)?.ten_to||"-", monName=id=>ST.monHoc.find(t=>t.id===id)?.ten_mon||"-";
+
+  // ---- 1) Chi tiết các lượt ghi nhận TRONG KỲ đã chọn (từ ngày -> đến ngày) ----
+  let qKy = supa.from("danh_gia").select("*, giao_vien(ho_ten, to_id, mon_id)").order("ngay");
+  if (from) qKy = qKy.gte("ngay", from);
+  if (to) qKy = qKy.lte("ngay", to);
+  const { data: dataKy, error: errKy } = await qKy;
+  if (errKy){ console.error(errKy); return toast("Lỗi tải dữ liệu báo cáo: "+errKy.message,"err"); }
+  let rowsKy = (dataKy||[]).filter(r=>{
     if (!r.giao_vien) return false;
     if (toF && String(r.giao_vien.to_id)!==toF) return false;
     if (monF && String(r.giao_vien.mon_id)!==monF) return false;
     return true;
   });
-  const toName=id=>ST.toBo.find(t=>t.id===id)?.ten_to||"-", monName=id=>ST.monHoc.find(t=>t.id===id)?.ten_mon||"-";
-  reportDetailRows = rows.map(r=>({
+  reportDetailRows = rowsKy.map(r=>({
     ngay:r.ngay, ho_ten:r.giao_vien.ho_ten, to:toName(r.giao_vien.to_id), mon:monName(r.giao_vien.mon_id),
     noi_dung:r.noi_dung, loai:r.loai, diem:r.diem, giao_vien_id:r.giao_vien_id
   }));
-  $("#statCount").textContent = rows.length;
-  $("#statKhen").textContent = rows.filter(r=>r.loai==="Khen thưởng").length;
-  $("#statVi").textContent = rows.filter(r=>r.loai==="Vi phạm").length;
-  const teacherIds = new Set(rows.map(r=>r.giao_vien_id));
-  $("#statTeachers").textContent = teacherIds.size;
+  $("#statCount").textContent = rowsKy.length;
+  $("#statKhen").textContent = rowsKy.filter(r=>r.loai==="Khen thưởng").length;
+  $("#statVi").textContent = rowsKy.filter(r=>r.loai==="Vi phạm").length;
+  const teacherIdsInKy = new Set(rowsKy.map(r=>r.giao_vien_id));
+  $("#statTeachers").textContent = teacherIdsInKy.size;
 
-  // Tổng hợp theo giáo viên
-  const map = {};
+  // Điểm cộng/trừ và số lượt PHÁT SINH TRONG KỲ, theo từng giáo viên
+  const kyMap = {};
   for (const r of reportDetailRows){
-    if (!map[r.giao_vien_id]) map[r.giao_vien_id] = { ho_ten:r.ho_ten, to:r.to, mon:r.mon, count:0, tong:0, giao_vien_id:r.giao_vien_id };
-    map[r.giao_vien_id].count++; map[r.giao_vien_id].tong += r.diem;
+    if (!kyMap[r.giao_vien_id]) kyMap[r.giao_vien_id] = { count:0, tong:0 };
+    kyMap[r.giao_vien_id].count++; kyMap[r.giao_vien_id].tong += r.diem;
   }
-  reportSummaryRows = Object.values(map).sort((a,b)=>b.tong-a.tong);
+
+  // ---- 2) Điểm LŨY KẾ TÍNH ĐẾN NGÀY xuất/in (toàn bộ lịch sử từ trước tới "Đến ngày", ----
+  //         không giới hạn theo "Từ ngày" — để giáo viên không vi phạm/khen gì thêm vẫn
+  //         giữ đúng mức điểm hiện có của họ khi in báo cáo ở bất kỳ ngày nào trong tháng.
+  reportAsOfDate = to || todayStr();
+  let qLuyKe = supa.from("danh_gia").select("giao_vien_id, diem").lte("ngay", reportAsOfDate);
+  const { data: dataLuyKe, error: errLuyKe } = await qLuyKe;
+  if (errLuyKe){ console.error(errLuyKe); return toast("Lỗi tính điểm lũy kế: "+errLuyKe.message,"err"); }
+  const cumMap = {};
+  for (const r of (dataLuyKe||[])) cumMap[r.giao_vien_id] = (cumMap[r.giao_vien_id]||0) + r.diem;
+
+  // ---- 3) Luôn liệt kê TOÀN BỘ giáo viên đang hoạt động (theo bộ lọc Tổ/Môn) ----
+  //         kể cả những người không có bất kỳ ghi nhận nào trong kỳ đã chọn.
+  reportSummaryRows = ST.giaoVien.filter(g=>{
+    if (toF && String(g.to_id)!==toF) return false;
+    if (monF && String(g.mon_id)!==monF) return false;
+    return true;
+  }).map(g=>{
+    const p = kyMap[g.id] || { count:0, tong:0 };
+    const diemDenNgay = (g.diem_mac_dinh||0) + (cumMap[g.id]||0);
+    return {
+      giao_vien_id:g.id, ho_ten:g.ho_ten, to:toName(g.to_id), mon:monName(g.mon_id),
+      count:p.count, tong:p.tong, diem_den_ngay:diemDenNgay, xep_loai:xepLoaiCua(diemDenNgay)
+    };
+  }).sort((a,b)=>b.diem_den_ngay-a.diem_den_ngay);
+
+  $("#repSummaryNote").textContent = `Cột "Điểm hiện tại (lũy kế)" tính từ điểm khởi điểm theo chức vụ, cộng dồn toàn bộ khen thưởng/vi phạm tính đến hết ngày ${fmtDate(reportAsOfDate)}. Giáo viên không có ghi nhận mới trong kỳ vẫn giữ nguyên mức điểm này.`;
+
   $("#repDetailTable tbody").innerHTML = reportDetailRows.length ? reportDetailRows.map(r=>`
     <tr><td data-label="Ngày">${fmtDate(r.ngay)}</td><td data-label="Giáo viên">${esc(r.ho_ten)}</td><td data-label="Tổ">${esc(r.to)}</td>
     <td data-label="Nội dung">${esc(r.noi_dung)}</td><td data-label="Loại"><span class="badge badge-${r.loai==='Khen thưởng'?'khen':'viphạm'}">${esc(r.loai)}</span></td>
     <td data-label="Điểm"><span class="${r.diem>=0?'txt-pos':'txt-neg'}">${r.diem>0?'+':''}${r.diem}</span></td></tr>`).join("")
-    : `<tr><td colspan="6" class="empty-note">Không có dữ liệu trong kỳ đã chọn</td></tr>`;
-  $("#repSummaryTable tbody").innerHTML = reportSummaryRows.length ? reportSummaryRows.map(r=>{
-    const cur = bangDiemCache.find(b=>b.giao_vien_id===r.giao_vien_id);
-    return `<tr><td data-label="Họ và tên"><b>${esc(r.ho_ten)}</b></td><td data-label="Tổ">${esc(r.to)}</td><td data-label="Môn">${esc(r.mon)}</td>
-    <td data-label="Số lượt">${r.count}</td><td data-label="Điểm cộng/trừ trong kỳ"><span class="${r.tong>=0?'txt-pos':'txt-neg'}">${r.tong>0?'+':''}${r.tong}</span></td>
-    <td data-label="Điểm hiện tại (lũy kế)">${cur?cur.diem_hien_tai:"-"}</td><td data-label="Xếp loại hiện tại">${cur?badgeXepLoai(cur.xep_loai):"-"}</td></tr>`;
-  }).join("") : `<tr><td colspan="7" class="empty-note">Không có dữ liệu trong kỳ đã chọn</td></tr>`;
+    : `<tr><td colspan="6" class="empty-note">Không có lượt ghi nhận (khen thưởng/vi phạm) nào trong kỳ đã chọn</td></tr>`;
+
+  $("#repSummaryTable tbody").innerHTML = reportSummaryRows.length ? reportSummaryRows.map(r=>`
+    <tr><td data-label="Họ và tên"><b>${esc(r.ho_ten)}</b></td><td data-label="Tổ">${esc(r.to)}</td><td data-label="Môn">${esc(r.mon)}</td>
+    <td data-label="Số lượt">${r.count}</td><td data-label="Điểm cộng/trừ trong kỳ">${r.tong===0?'0':`<span class="${r.tong>=0?'txt-pos':'txt-neg'}">${r.tong>0?'+':''}${r.tong}</span>`}</td>
+    <td data-label="Điểm hiện tại (lũy kế)"><b>${r.diem_den_ngay}</b></td><td data-label="Xếp loại hiện tại">${badgeXepLoai(r.xep_loai)}</td></tr>`
+  ).join("") : `<tr><td colspan="7" class="empty-note">Không có giáo viên phù hợp bộ lọc Tổ/Môn đã chọn</td></tr>`;
 }
 
 $("#btnExportExcel").addEventListener("click", ()=>{
-  if (!reportDetailRows.length && !reportSummaryRows.length) return toast("Chưa có dữ liệu để xuất — hãy bấm 'Xem thống kê' trước","err");
+  if (!reportSummaryRows.length) return toast("Không có giáo viên phù hợp để xuất — kiểm tra lại bộ lọc Tổ/Môn","err");
   const wb = XLSX.utils.book_new();
-  const wsSum = XLSX.utils.json_to_sheet(reportSummaryRows.map(r=>({ "Họ và tên":r.ho_ten, "Tổ":r.to, "Môn":r.mon, "Số lượt":r.count, "Điểm cộng/trừ trong kỳ":r.tong })));
+  const colDiem = `Điểm hiện tại (lũy kế đến ${fmtDate(reportAsOfDate)})`;
+  const wsSum = XLSX.utils.json_to_sheet(reportSummaryRows.map(r=>({
+    "Họ và tên":r.ho_ten, "Tổ":r.to, "Môn":r.mon,
+    "Số lượt trong kỳ":r.count, "Điểm cộng/trừ trong kỳ":r.tong,
+    [colDiem]:r.diem_den_ngay, "Xếp loại":r.xep_loai
+  })));
+  wsSum["!cols"] = [{wch:24},{wch:14},{wch:16},{wch:12},{wch:16},{wch:26},{wch:12}];
   const wsDet = XLSX.utils.json_to_sheet(reportDetailRows.map(r=>({ "Ngày":fmtDate(r.ngay), "Họ và tên":r.ho_ten, "Tổ":r.to, "Môn":r.mon, "Nội dung":r.noi_dung, "Loại":r.loai, "Điểm":r.diem })));
+  wsDet["!cols"] = [{wch:11},{wch:24},{wch:14},{wch:16},{wch:34},{wch:14},{wch:8}];
   XLSX.utils.book_append_sheet(wb, wsSum, "Tong hop");
   XLSX.utils.book_append_sheet(wb, wsDet, "Chi tiet");
-  XLSX.writeFile(wb, `BaoCaoThiDua_${$("#repFrom").value}_${$("#repTo").value}.xlsx`);
+  const tenFrom = $("#repFrom").value || "batdau", tenTo = $("#repTo").value || todayStr();
+  XLSX.writeFile(wb, `BaoCaoThiDua_${tenFrom}_${tenTo}.xlsx`);
+  toast("Đã xuất file Excel","ok");
 });
 
 $("#btnExportPdf").addEventListener("click", ()=>{
-  if (!reportDetailRows.length && !reportSummaryRows.length) return toast("Chưa có dữ liệu để xuất — hãy bấm 'Xem thống kê' trước","err");
+  if (!reportSummaryRows.length) return toast("Không có giáo viên phù hợp để in — kiểm tra lại bộ lọc Tổ/Môn","err");
   const w = window.open("", "_blank");
-  const rowsSum = reportSummaryRows.map(r=>`<tr><td>${esc(r.ho_ten)}</td><td>${esc(r.to)}</td><td>${esc(r.mon)}</td><td>${r.count}</td><td>${r.tong>0?'+':''}${r.tong}</td></tr>`).join("");
-  const rowsDet = reportDetailRows.map(r=>`<tr><td>${fmtDate(r.ngay)}</td><td>${esc(r.ho_ten)}</td><td>${esc(r.to)}</td><td>${esc(r.noi_dung)}</td><td>${esc(r.loai)}</td><td>${r.diem>0?'+':''}${r.diem}</td></tr>`).join("");
+  const rowsSum = reportSummaryRows.map(r=>`<tr><td>${esc(r.ho_ten)}</td><td>${esc(r.to)}</td><td>${esc(r.mon)}</td><td>${r.count}</td><td>${r.tong>0?'+':''}${r.tong}</td><td><b>${r.diem_den_ngay}</b></td><td>${esc(r.xep_loai)}</td></tr>`).join("");
+  const rowsDet = reportDetailRows.length
+    ? reportDetailRows.map(r=>`<tr><td>${fmtDate(r.ngay)}</td><td>${esc(r.ho_ten)}</td><td>${esc(r.to)}</td><td>${esc(r.noi_dung)}</td><td>${esc(r.loai)}</td><td>${r.diem>0?'+':''}${r.diem}</td></tr>`).join("")
+    : `<tr><td colspan="6" style="text-align:center; color:#888;">Không có lượt ghi nhận nào trong kỳ đã chọn</td></tr>`;
   w.document.write(`<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><title>Báo cáo thi đua</title>
     <style>
       body{font-family:Arial,'Segoe UI',sans-serif; padding:24px; color:#132038;}
@@ -1069,14 +1114,18 @@ $("#btnExportPdf").addEventListener("click", ()=>{
       th,td{border:1px solid #ccc; padding:6px 8px; text-align:left;}
       th{background:#1B3A63; color:#fff;}
       h2{font-size:15px; margin-top:26px;}
+      .as-of{font-size:12.5px; color:#555; margin:0 0 4px;}
+      footer.copyright{text-align:center; color:#8695AC; font-size:11.5px; margin-top:28px;}
       @media print{ body{padding:0;} }
     </style></head><body>
     <h1>BÁO CÁO THI ĐUA GIÁO VIÊN</h1>
-    <p>Kỳ báo cáo: ${fmtDate($("#repFrom").value)} — ${fmtDate($("#repTo").value)}</p>
+    <p>Kỳ báo cáo (các lượt ghi nhận): ${fmtDate($("#repFrom").value)} — ${fmtDate($("#repTo").value)}</p>
+    <p class="as-of">Điểm hiện tại (lũy kế) tính đến hết ngày: <b>${fmtDate(reportAsOfDate)}</b></p>
     <h2>Tổng hợp theo giáo viên</h2>
-    <table><thead><tr><th>Họ và tên</th><th>Tổ</th><th>Môn</th><th>Số lượt</th><th>Điểm cộng/trừ</th></tr></thead><tbody>${rowsSum}</tbody></table>
-    <h2>Chi tiết ghi nhận</h2>
+    <table><thead><tr><th>Họ và tên</th><th>Tổ</th><th>Môn</th><th>Số lượt trong kỳ</th><th>Điểm cộng/trừ trong kỳ</th><th>Điểm hiện tại (lũy kế)</th><th>Xếp loại</th></tr></thead><tbody>${rowsSum}</tbody></table>
+    <h2>Chi tiết ghi nhận trong kỳ</h2>
     <table><thead><tr><th>Ngày</th><th>Họ và tên</th><th>Tổ</th><th>Nội dung</th><th>Loại</th><th>Điểm</th></tr></thead><tbody>${rowsDet}</tbody></table>
+    <footer class="copyright">Created by Nguyen Van Hoang, Technology teacher, Chi Lang High School, Lang Son.</footer>
     <script>window.onload=()=>setTimeout(()=>window.print(),300);<\/script>
     </body></html>`);
   w.document.close();
