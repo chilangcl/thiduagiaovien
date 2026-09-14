@@ -2,11 +2,7 @@
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
-<meta name="theme-color" content="#122544">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>Thi đua Giáo viên</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,45 +21,37 @@
   --radius:12px; --radius-sm:8px;
   --shadow:0 1px 3px rgba(18,37,68,.07), 0 1px 2px rgba(18,37,68,.06);
 }
-*{box-sizing:border-box; min-width:0; -webkit-tap-highlight-color:transparent;}
+*{box-sizing:border-box; min-width:0;}
 html,body{margin:0;padding:0; max-width:100%; overflow-x:hidden;}
-html{-webkit-text-size-adjust:100%; text-size-adjust:100%;}
 body{
   font-family:'Be Vietnam Pro',system-ui,-apple-system,sans-serif;
   background:var(--bg); color:var(--text); font-size:16px; line-height:1.5;
   -webkit-font-smoothing:antialiased;
-  overscroll-behavior-y:contain;
 }
 img,svg,table{max-width:100%;}
 h1,h2,h3,h4{margin:0; font-weight:700; letter-spacing:-.01em;}
-button{font-family:inherit; cursor:pointer; touch-action:manipulation;}
-input,select,textarea{font-family:inherit; font-size:16px; touch-action:manipulation;}
+button{font-family:inherit; cursor:pointer;}
+input,select,textarea{font-family:inherit; font-size:16px;}
 a{color:var(--blue);}
 ::selection{background:#BFE0F5;}
-/* Đảm bảo mọi vùng bấm (nút, thẻ chọn nhanh, tab...) đạt kích thước chạm tối thiểu ~44px, dễ bấm bằng ngón tay */
-.btn,.navtab,.subtab,.authtab,.chip,.btn-icon,.modal-close,.teacher-item{touch-action:manipulation;}
 
 /* ============================== LAYOUT ============================== */
 #topbar{
   position:sticky; top:0; z-index:40; background:var(--navy);
   color:#fff; box-shadow:0 2px 10px rgba(0,0,0,.15);
-  padding-top:env(safe-area-inset-top);
 }
 .topbar-inner{
   max-width:1280px; margin:0 auto; padding:0 16px;
   display:flex; align-items:center; gap:12px; height:60px;
-  padding-left:calc(16px + env(safe-area-inset-left));
-  padding-right:calc(16px + env(safe-area-inset-right));
 }
 .brand{display:flex; align-items:center; gap:8px; font-weight:800; font-size:17px; white-space:nowrap;
   overflow:hidden; text-overflow:ellipsis; flex-shrink:1; min-width:0;}
 .brand .dot{width:10px; height:10px; border-radius:50%; background:var(--amber); flex-shrink:0;}
-#navtabs{display:flex; gap:4px; overflow-x:auto; flex:1 1 auto; min-width:0; scrollbar-width:none; touch-action:pan-x;}
+#navtabs{display:flex; gap:4px; overflow-x:auto; flex:1 1 auto; min-width:0; scrollbar-width:none;}
 #navtabs::-webkit-scrollbar{display:none;}
 .navtab{
   background:transparent; border:none; color:#C7D3E6; padding:10px 14px;
   font-size:15px; font-weight:600; border-radius:8px; white-space:nowrap; transition:.15s; flex-shrink:0;
-  min-height:44px; display:inline-flex; align-items:center;
 }
 .navtab:hover{background:rgba(255,255,255,.08); color:#fff;}
 .navtab.active{background:var(--blue); color:#fff;}
@@ -75,15 +63,13 @@ a{color:var(--blue);}
 @media(max-width:680px){
   .topbar-inner{ flex-wrap:wrap; height:auto; padding:8px 10px; row-gap:6px; }
   .brand{ font-size:15px; max-width:56vw; }
-  #navtabs{ order:3; flex:1 1 100%; -webkit-overflow-scrolling:touch; scroll-snap-type:x proximity; }
-  #navtabs .navtab{ scroll-snap-align:start; }
+  #navtabs{ order:3; flex:1 1 100%; }
   .auth-area{ order:2; margin-left:auto; }
   #userName{ display:none; }
 }
 .btn{
   border:none; border-radius:8px; padding:10px 16px; font-weight:600; font-size:15px;
   display:inline-flex; align-items:center; gap:6px; transition:.15s; white-space:nowrap;
-  min-height:42px;
 }
 .btn-primary{background:var(--blue); color:#fff;}
 .btn-primary:hover{background:#256E8C;}
@@ -95,20 +81,13 @@ a{color:var(--blue);}
 .btn-teal:hover{background:#166D5F;}
 .btn-red{background:var(--red); color:#fff;}
 .btn-red:hover{background:#A11F30;}
-.btn-sm{padding:6px 10px; font-size:13px; border-radius:6px; min-height:36px;}
+.btn-sm{padding:6px 10px; font-size:13px; border-radius:6px;}
 .btn:disabled{opacity:.45; cursor:not-allowed;}
-.btn-icon{padding:7px; border-radius:7px; background:transparent; border:1.5px solid var(--border);
-  min-width:38px; min-height:38px; display:inline-flex; align-items:center; justify-content:center;}
+.btn-icon{padding:7px; border-radius:7px; background:transparent; border:1.5px solid var(--border);}
 .btn-icon:hover{border-color:var(--blue);}
 .btn-icon.danger:hover{border-color:var(--red);}
-@media(max-width:680px){
-  .btn{ min-height:46px; }
-  .btn-sm{ min-height:40px; padding:8px 12px; }
-  .btn-icon{ min-width:42px; min-height:42px; }
-}
 
-main{max-width:1280px; margin:0 auto; padding:22px 16px calc(80px + env(safe-area-inset-bottom));
-  padding-left:calc(16px + env(safe-area-inset-left)); padding-right:calc(16px + env(safe-area-inset-right));}
+main{max-width:1280px; margin:0 auto; padding:22px 16px 80px;}
 .section{display:none;}
 .section.active{display:block; animation:fadein .18s ease;}
 @keyframes fadein{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
@@ -150,8 +129,8 @@ main{max-width:1280px; margin:0 auto; padding:22px 16px calc(80px + env(safe-are
 /* ============================== FILTER BAR ============================== */
 .filterbar{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:18px 0 14px;}
 .filterbar input[type=text],.filterbar input[type=date],.filterbar select{
-  border:1.5px solid var(--border); border-radius:8px; padding:10px 12px; font-size:16px;
-  background:#fff; color:var(--text); min-width:0; max-width:100%; min-height:44px;
+  border:1.5px solid var(--border); border-radius:8px; padding:9px 12px; font-size:14.5px;
+  background:#fff; color:var(--text); min-width:0; max-width:100%;
 }
 .filterbar .grow{flex:1; min-width:160px;}
 .filterbar label{font-size:13px; font-weight:600; color:var(--text-soft); margin-right:2px; white-space:nowrap;}
@@ -165,7 +144,7 @@ main{max-width:1280px; margin:0 auto; padding:22px 16px calc(80px + env(safe-are
 }
 
 /* ============================== TABLE ============================== */
-.table-wrap{background:var(--card); border:1px solid var(--border); border-radius:var(--radius); overflow-x:auto; box-shadow:var(--shadow); touch-action:pan-x;}
+.table-wrap{background:var(--card); border:1px solid var(--border); border-radius:var(--radius); overflow-x:auto; box-shadow:var(--shadow);}
 table{width:100%; border-collapse:collapse; font-size:14.5px;}
 thead th{
   background:var(--navy-2); color:#fff; text-align:left; padding:12px 14px;
@@ -206,23 +185,16 @@ tbody tr:hover{background:#F7FAFD;}
   table.responsive td select,
   table.responsive td input[type=text],
   table.responsive td input[type=date],
-  table.responsive td input[type=number]{ width:100%; max-width:100%; min-height:42px; padding:8px 10px; }
+  table.responsive td input[type=number]{ width:100%; max-width:100%; }
   table.responsive .row-actions{ justify-content:flex-start; flex-wrap:wrap; }
   table.responsive td .btn{ width:auto; }
-  table.responsive td[data-label="Kích hoạt"] input[type=checkbox]{ width:22px; height:22px; }
 }
 
 /* ============================== TABS (settings/reports) ============================== */
 .subtabs{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; border-bottom:2px solid var(--border); padding-bottom:0;}
 .subtab{
-  background:transparent; border:none; padding:12px 16px; font-weight:600; font-size:14.5px;
-  color:var(--text-soft); border-bottom:3px solid transparent; margin-bottom:-2px; min-height:44px;
-}
-.subtabs{-webkit-overflow-scrolling:touch;}
-@media(max-width:600px){
-  .subtabs{ flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; touch-action:pan-x; }
-  .subtabs::-webkit-scrollbar{ display:none; }
-  .subtab{ flex-shrink:0; }
+  background:transparent; border:none; padding:10px 16px; font-weight:600; font-size:14.5px;
+  color:var(--text-soft); border-bottom:3px solid transparent; margin-bottom:-2px;
 }
 .subtab.active{color:var(--navy); border-color:var(--blue);}
 .subpanel{display:none;}
@@ -232,44 +204,25 @@ tbody tr:hover{background:#F7FAFD;}
 .overlay{
   position:fixed; inset:0; background:rgba(15,25,45,.55); display:none;
   align-items:flex-start; justify-content:center; z-index:100; padding:30px 14px; overflow-y:auto;
-  -webkit-overflow-scrolling:touch;
 }
 .overlay.show{display:flex;}
 .modal{
   background:#fff; border-radius:var(--radius); max-width:560px; width:100%;
   box-shadow:0 20px 60px rgba(0,0,0,.3); animation:modalin .16s ease;
-  display:flex; flex-direction:column; max-height:calc(100vh - 60px);
 }
 .modal.wide{max-width:760px;}
 @keyframes modalin{from{opacity:0; transform:translateY(-10px);} to{opacity:1; transform:none;}}
-.modal-head{display:flex; align-items:center; justify-content:space-between; padding:18px 22px; border-bottom:1px solid var(--border); flex-shrink:0;}
+.modal-head{display:flex; align-items:center; justify-content:space-between; padding:18px 22px; border-bottom:1px solid var(--border);}
 .modal-head h3{font-size:18px; color:var(--navy);}
-.modal-close{background:none; border:none; font-size:22px; color:var(--text-faint); line-height:1; padding:4px;
-  min-width:38px; min-height:38px; display:inline-flex; align-items:center; justify-content:center; border-radius:8px;}
-.modal-close:hover{background:var(--bg);}
-.modal-body{padding:20px 22px; overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1 1 auto;}
-.modal-foot{padding:16px 22px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px; flex-shrink:0;
-  padding-bottom:calc(16px + env(safe-area-inset-bottom));}
-@media(max-width:600px){
-  /* Modal dạng "bottom sheet" — dễ với ngón cái, quen thuộc với thao tác trên điện thoại */
-  .overlay{ align-items:flex-end; padding:0; }
-  .modal{ max-width:100%; border-radius:18px 18px 0 0; max-height:88vh; animation:sheetin .2s ease; }
-  @keyframes sheetin{from{opacity:0; transform:translateY(24px);} to{opacity:1; transform:none;}}
-  .modal-head{ padding:16px 18px; position:sticky; top:0; background:#fff; border-radius:18px 18px 0 0; }
-  .modal-head::before{ content:""; position:absolute; top:8px; left:50%; transform:translateX(-50%);
-    width:40px; height:4px; border-radius:4px; background:var(--border); }
-  .modal-body{ padding:16px 18px; }
-  .modal-foot{ flex-direction:column-reverse; gap:8px; padding:14px 18px calc(14px + env(safe-area-inset-bottom)); }
-  .modal-foot .btn{ width:100%; justify-content:center; }
-}
+.modal-close{background:none; border:none; font-size:22px; color:var(--text-faint); line-height:1; padding:4px;}
+.modal-body{padding:20px 22px; max-height:70vh; overflow-y:auto;}
+.modal-foot{padding:16px 22px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px;}
 
 .field{margin-bottom:14px;}
 .field label{display:block; font-weight:600; font-size:13.5px; color:var(--text-soft); margin-bottom:6px;}
 .field input,.field select,.field textarea{
-  width:100%; border:1.5px solid var(--border); border-radius:8px; padding:10px 12px; font-size:16px; color:var(--text);
-  min-height:44px;
+  width:100%; border:1.5px solid var(--border); border-radius:8px; padding:10px 12px; font-size:15px; color:var(--text);
 }
-.field textarea{min-height:88px;}
 .field input:focus,.field select:focus,.field textarea:focus{outline:none; border-color:var(--blue);}
 .field-row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
 @media(max-width:480px){.field-row{grid-template-columns:1fr;}}
@@ -280,15 +233,15 @@ tbody tr:hover{background:#F7FAFD;}
 .form-msg.ok{background:var(--teal-light); color:var(--teal);}
 
 .authtabs{display:flex; gap:0; margin-bottom:18px; border:1.5px solid var(--border); border-radius:8px; overflow:hidden;}
-.authtab{flex:1; padding:12px; text-align:center; background:#fff; border:none; font-weight:600; color:var(--text-soft); min-height:44px;}
+.authtab{flex:1; padding:10px; text-align:center; background:#fff; border:none; font-weight:600; color:var(--text-soft);}
 .authtab.active{background:var(--navy-2); color:#fff;}
 
 /* ============================== RECORD PICKER ============================== */
 .teacher-search{margin-bottom:12px;}
 .teacher-list{max-height:280px; overflow-y:auto; border:1px solid var(--border); border-radius:8px;}
 .teacher-item{
-  width:100%; text-align:left; padding:13px 14px; background:#fff; border:none; border-bottom:1px solid var(--border);
-  display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:4px 8px; min-height:48px;
+  width:100%; text-align:left; padding:11px 14px; background:#fff; border:none; border-bottom:1px solid var(--border);
+  display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:4px 8px;
 }
 .teacher-item:last-child{border-bottom:none;}
 .teacher-item:hover{background:var(--blue-light);}
@@ -303,8 +256,7 @@ tbody tr:hover{background:#F7FAFD;}
 .chip-group-title{font-size:13px; font-weight:700; color:var(--text-soft); margin:14px 0 8px;}
 .chips{display:flex; flex-wrap:wrap; gap:8px;}
 .chip{
-  border:1.5px solid var(--border); border-radius:999px; padding:10px 16px; font-size:13.5px; font-weight:600; background:#fff;
-  min-height:40px; display:inline-flex; align-items:center;
+  border:1.5px solid var(--border); border-radius:999px; padding:8px 14px; font-size:13.5px; font-weight:600; background:#fff;
 }
 .chip.khen{border-color:#B7E0D4; color:var(--teal);}
 .chip.khen:hover{background:var(--teal-light);}
@@ -312,8 +264,7 @@ tbody tr:hover{background:#F7FAFD;}
 .chip.viphạm:hover{background:var(--red-light);}
 
 /* ============================== TOASTS ============================== */
-#toasts{position:fixed; bottom:18px; right:18px; z-index:200; display:flex; flex-direction:column; gap:10px;
-  bottom:calc(18px + env(safe-area-inset-bottom)); right:calc(18px + env(safe-area-inset-right));}
+#toasts{position:fixed; bottom:18px; right:18px; z-index:200; display:flex; flex-direction:column; gap:10px;}
 .toast{
   background:var(--navy); color:#fff; padding:12px 18px; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.25);
   font-size:14.5px; font-weight:600; max-width:320px; animation:toastin .18s ease;
@@ -321,10 +272,6 @@ tbody tr:hover{background:#F7FAFD;}
 .toast.ok{background:var(--teal);}
 .toast.err{background:var(--red);}
 @keyframes toastin{from{opacity:0; transform:translateX(20px);} to{opacity:1; transform:none;}}
-@media(max-width:600px){
-  #toasts{ left:12px; right:12px; bottom:calc(14px + env(safe-area-inset-bottom)); align-items:stretch; }
-  .toast{ max-width:100%; text-align:center; }
-}
 
 .stat-cards{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:18px;}
 @media(max-width:760px){.stat-cards{grid-template-columns:repeat(2,1fr);}}
@@ -344,8 +291,8 @@ tbody tr:hover{background:#F7FAFD;}
   .stat-card .n{ font-size:21px; }
   main{ padding:16px 10px 70px; }
   .page-head h1{ font-size:20px; }
+  .modal-body{ padding:16px; }
   .field-row{ gap:10px; }
-  main{ padding-bottom:calc(70px + env(safe-area-inset-bottom)); }
 }
 .spacer{flex:1;}
 .small-note{font-size:13px; color:var(--text-faint); margin-top:10px;}
@@ -354,9 +301,7 @@ tbody tr:hover{background:#F7FAFD;}
   padding:14px 18px; margin-bottom:18px; font-size:14.5px; line-height:1.6;
 }
 .config-banner code{background:#fff; padding:1px 6px; border-radius:4px; font-size:13px;}
-footer{text-align:center; color:var(--text-faint); font-size:13px; padding:24px 0 10px; line-height:1.7;
-  padding-bottom:calc(10px + env(safe-area-inset-bottom));}
-footer .footer-credit{font-size:12px; opacity:.8;}
+footer{text-align:center; color:var(--text-faint); font-size:13px; padding:24px 0 10px;}
 </style>
 </head>
 <body>
@@ -584,10 +529,7 @@ footer .footer-credit{font-size:12px; opacity:.8;}
     </div>
   </section>
 
-  <footer>
-    <div>Hệ thống quản lý thi đua nội bộ &middot; dữ liệu lưu trữ trên Supabase</div>
-    <div class="footer-credit">Developed by Nguyen Van Hoang, Technology teacher, Chi Lang High School, Lang Son.</div>
-  </footer>
+  <footer>Hệ thống quản lý thi đua nội bộ &middot; dữ liệu lưu trữ trên Supabase</footer>
 </main>
 
 <!-- ============================== MODAL: LOGIN/REGISTER ============================== -->
@@ -1123,7 +1065,6 @@ $("#btnExportPdf").addEventListener("click", ()=>{
       th,td{border:1px solid #ccc; padding:6px 8px; text-align:left;}
       th{background:#1B3A63; color:#fff;}
       h2{font-size:15px; margin-top:26px;}
-      .print-footer{margin-top:30px; text-align:center; color:#8695AC; font-size:11px;}
       @media print{ body{padding:0;} }
     </style></head><body>
     <h1>BÁO CÁO THI ĐUA GIÁO VIÊN</h1>
@@ -1132,7 +1073,6 @@ $("#btnExportPdf").addEventListener("click", ()=>{
     <table><thead><tr><th>Họ và tên</th><th>Tổ</th><th>Môn</th><th>Số lượt</th><th>Điểm cộng/trừ</th></tr></thead><tbody>${rowsSum}</tbody></table>
     <h2>Chi tiết ghi nhận</h2>
     <table><thead><tr><th>Ngày</th><th>Họ và tên</th><th>Tổ</th><th>Nội dung</th><th>Loại</th><th>Điểm</th></tr></thead><tbody>${rowsDet}</tbody></table>
-    <div class="print-footer">Developed by Nguyen Van Hoang, Technology teacher, Chi Lang High School, Lang Son.</div>
     <script>window.onload=()=>setTimeout(()=>window.print(),300);<\/script>
     </body></html>`);
   w.document.close();
