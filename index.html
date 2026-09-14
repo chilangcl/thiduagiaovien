@@ -469,6 +469,7 @@ footer{text-align:center; color:var(--text-faint); font-size:13px; padding:24px 
         <button class="btn btn-outline btn-sm" id="btnDownloadTemplate">⬇ Tải file mẫu Excel</button>
         <button class="btn btn-outline btn-sm" id="btnImportGvTrigger">⬆ Nhập từ Excel</button>
         <input type="file" id="fileImportGv" accept=".xlsx,.xls" class="hidden">
+        <button class="btn btn-outline btn-sm" id="btnSyncGvScores">🔄 Đồng bộ điểm theo chức vụ</button>
         <span class="spacer"></span>
         <button class="btn btn-primary btn-sm" id="btnAddGv">+ Thêm giáo viên</button>
       </div>
@@ -1159,6 +1160,18 @@ function openGvForm(id){
   openModal("modalGeneric");
 }
 $("#btnAddGv").addEventListener("click", ()=>openGvForm(null));
+$("#btnSyncGvScores").addEventListener("click", async ()=>{
+  if (!ST.chucVu.length) return toast("Chưa có cấu hình Điểm theo chức vụ","err");
+  if (!confirm("Cập nhật lại Điểm mặc định của TẤT CẢ giáo viên cho đúng với cấu hình Điểm theo chức vụ hiện tại?\n\nMọi điểm mặc định đã chỉnh riêng cho từng giáo viên sẽ bị ghi đè theo chức vụ hiện gán cho họ.")) return;
+  let total = 0, errMsg = "";
+  for (const cv of ST.chucVu){
+    const { data, error } = await supa.from("giao_vien").update({ diem_mac_dinh: cv.diem }).eq("chuc_vu", cv.chuc_vu).select("id");
+    if (error) errMsg = error.message; else total += data?.length || 0;
+  }
+  if (errMsg) toast(errMsg, "err");
+  toast(`Đã đồng bộ điểm mặc định cho ${total} giáo viên`, "ok");
+  await loadStaticData(); renderGvTable();
+});
 
 // ---- Chức vụ điểm ----
 function renderCvTable(){
@@ -1170,18 +1183,35 @@ function renderCvTable(){
 async function deleteCv(id){ if(!confirm("Xóa chức vụ này?")) return; const {error}=await supa.from("chuc_vu_diem").delete().eq("id",id); if(error) return toast(error.message,"err"); toast("Đã xóa","ok"); await loadStaticData(); renderCvTable(); }
 function openCvForm(id){
   const c = id ? ST.chucVu.find(x=>x.id===id) : { chuc_vu:"", diem:100 };
+  const oldName = c.chuc_vu; // tên chức vụ TRƯỚC khi sửa — dùng để đối chiếu giáo viên cần đồng bộ điểm
   $("#genericTitle").textContent = id ? "Sửa chức vụ" : "Thêm chức vụ";
   $("#genericFields").innerHTML = `<div class="field"><label>Tên chức vụ</label><input type="text" id="fCv" value="${esc(c.chuc_vu)}"></div>
-    <div class="field"><label>Điểm khởi điểm</label><input type="number" id="fCvDiem" value="${c.diem}"></div>`;
+    <div class="field"><label>Điểm khởi điểm</label><input type="number" id="fCvDiem" value="${c.diem}"></div>
+    <div class="field" style="display:flex; align-items:center; gap:8px;">
+      <input type="checkbox" id="fCvApply" ${id?"checked":""} style="width:auto;">
+      <label for="fCvApply" style="margin:0; font-weight:600; color:var(--text);">Áp dụng điểm này cho tất cả giáo viên đang giữ chức vụ "${esc(oldName)||"..."}"</label>
+    </div>
+    <p class="hint">Nếu bỏ chọn, chỉ mục cấu hình được lưu — điểm của giáo viên đã có sẽ giữ nguyên cho tới khi được sửa thủ công hoặc đồng bộ lại ở mục "Danh sách giáo viên".</p>`;
   $("#genericMsg").className="form-msg";
   $("#btnGenericSave").onclick = async ()=>{
     const payload = { chuc_vu:$("#fCv").value.trim(), diem:parseFloat($("#fCvDiem").value)||0 };
+    const applyToTeachers = $("#fCvApply").checked;
     if (!payload.chuc_vu){ $("#genericMsg").textContent="Vui lòng nhập tên chức vụ"; $("#genericMsg").className="form-msg show err"; return; }
     let error;
     if (id) ({ error } = await supa.from("chuc_vu_diem").update(payload).eq("id", id));
     else ({ error } = await supa.from("chuc_vu_diem").insert(payload));
     if (error){ $("#genericMsg").textContent=error.message; $("#genericMsg").className="form-msg show err"; return; }
-    toast("Đã lưu","ok"); closeModal("modalGeneric"); await loadStaticData(); renderCvTable();
+    // Đồng bộ điểm mặc định cho các giáo viên đang giữ chức vụ này, để Trang chủ cập nhật ngay
+    let syncedCount = 0;
+    if (applyToTeachers && oldName){
+      const { data:updated, error:err2 } = await supa.from("giao_vien")
+        .update({ chuc_vu: payload.chuc_vu, diem_mac_dinh: payload.diem })
+        .eq("chuc_vu", oldName)
+        .select("id");
+      if (err2) console.error(err2); else syncedCount = updated?.length || 0;
+    }
+    toast(syncedCount ? `Đã lưu & cập nhật điểm cho ${syncedCount} giáo viên` : "Đã lưu cấu hình chức vụ", "ok");
+    closeModal("modalGeneric"); await loadStaticData(); renderCvTable(); renderGvTable();
   };
   openModal("modalGeneric");
 }
